@@ -1,0 +1,19 @@
+{
+  "name": "backbone-cache-react-native",
+  "version": "0.0.1",
+  "description": "Caching of models and collections for use offline, using react-native-simple-store",
+  "main": "backbone.cache.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Coggle/backbone-cache-react-native.git"
+  },
+  "author": "Andy Pritchard",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Coggle/backbone-cache-react-native/issues"
+  },
+  "homepage": "https://github.com/Coggle/backbone-cache-react-native#readme"
+}
