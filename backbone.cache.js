@@ -102,5 +102,3 @@ Backbone.Collection.prototype.restore = function(callback) {
     }).catch(callback);
 };
 
-
-var Cache = exports;
