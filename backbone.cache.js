@@ -19,8 +19,8 @@ Backbone.Model.prototype.cacheKey = function() {
 Backbone.Model.prototype.enableCache = function(options) {
     this._cache_options = options;
     // update cached version of the model any time it's synced from 
-    // the server or a change is triggered
-    this.on('sync change', function() {
+    // the server
+    this.on('sync', function() {
         this.cache();
     }.bind(this));
 };
@@ -36,11 +36,12 @@ Backbone.Model.prototype.evictFromCache = function() {
 
 Backbone.Model.prototype.restore = function(callback) {
     var model = this;
+
     // load cached object and inject it into the backbone model
     Store.get(this.cacheKey()).then(function(cached) {
         if (cached) model.set(cached, { silent: false });
-        if(callback) callback();
-    });
+        callback();
+    }).catch(callback);
 };
 
 
@@ -49,7 +50,7 @@ Backbone.Collection.prototype.enableCache = function(options) {
     this._cache_options = options;
     
     // when any model in the collection changes, re-cache it
-    this.on('change', function(model) {
+    this.on('sync', function(model) {
         model.cache();
     });
 
@@ -83,19 +84,22 @@ Backbone.Collection.prototype.restore = function(callback) {
     // into the backbone collection
     Store.get(this.cacheKey()).then(function(cached) {
         if (!cached) return callback();
-
-        async.map(cached, function(id, callback){
+        // remove any obviously invalid elements
+        cached = _.compact(cached);
+        
+        async.map(cached, function(id, cb){
             var doc = {};
             doc[collection.model.prototype.idAttribute] = id;
             var model = new (collection.model)(doc);
+            model.collection = collection;
             model.restore(function() {
-                callback(false, model);
+                cb(false, model);
             });
         }, function(err, models){
             if (models) collection.set(models, {silent: false});
-            if(callback) callback();
+            callback(err);
         });
-    });
+    }).catch(callback);
 };
 
 
