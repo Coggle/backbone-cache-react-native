@@ -15,5 +15,11 @@
   "bugs": {
     "url": "https://github.com/Coggle/backbone-cache-react-native/issues"
   },
-  "homepage": "https://github.com/Coggle/backbone-cache-react-native#readme"
+  "homepage": "https://github.com/Coggle/backbone-cache-react-native#readme",
+  "dependencies": {
+    "async": "^1.5.2",
+    "backbone-models-react-native": "0.0.1",
+    "react-native-simple-store": "^1.0.1",
+    "underscore": "^1.8.3"
+  }
 }
