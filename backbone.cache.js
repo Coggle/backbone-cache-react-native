@@ -17,6 +17,8 @@ module.exports = function(Backbone) {
     // is a listen for changes on the model and keep the cache up to
     // date with the latest version
     Backbone.Model.prototype.enableCache = function(options) {
+        if (this._cache_enabled) return;
+        this._cache_enabled = true;
         this._cache_options = options;
         // update cached version of the model any time it's synced from 
         // the server
@@ -47,17 +49,17 @@ module.exports = function(Backbone) {
 
 
     Backbone.Collection.prototype.enableCache = function(options) {
+        if (this._cache_enabled) return;
+        this._cache_enabled = true;
         this._cache_options = options;
         
         // when any model in the collection changes, re-cache it
-        this.on('sync', function(model) {
-            model.cache();
-        });
+        this.on('sync', function() {
+            this.cache();
+        }.bind(this));
 
-        this.on('sync add', function() {
-            // re-cache all the models in this collection
-            this.each(function(m){ m.cache(); });
-            // and store a list of the ids now in the collection
+        this.on('add', function(model) {
+            model.cache();
             this.cache();
         }.bind(this));
 
