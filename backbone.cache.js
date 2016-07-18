@@ -24,7 +24,11 @@ module.exports = function(Backbone) {
         // the server
         this.on('sync', function() {
             this.cache();
-        }.bind(this));
+        }.bind(this), this);
+
+        this.on('destroy', function() {
+            this.evictFromCache();
+        }.bind(this), this);
     };
 
     // a method to actually do the cache writing
@@ -33,6 +37,7 @@ module.exports = function(Backbone) {
     };
 
     Backbone.Model.prototype.evictFromCache = function() {
+        this.off(undefined, undefined, this);
         return Store.delete(this.cacheKey());
     };
 
@@ -66,8 +71,14 @@ module.exports = function(Backbone) {
         // tidy up models that aren't required any longer
         // todo: this will go wrong if a model is in multiple collections!
         //       maybe need some sort of reference counting?
+        this.on('destroy', function(model) {
+            model.evictFromCache();
+            this.cache();
+        }.bind(this));
+
         this.on('remove', function(model) {
             model.evictFromCache();
+            this.cache();
         }.bind(this));
     };
 
