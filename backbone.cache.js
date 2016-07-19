@@ -63,21 +63,14 @@ module.exports = function(Backbone) {
             this.cache();
         }.bind(this));
 
-        this.on('add', function(model) {
-            model.cache();
-            this.cache();
-        }.bind(this));
-
-        // tidy up models that aren't required any longer
-        // todo: this will go wrong if a model is in multiple collections!
-        //       maybe need some sort of reference counting?
-        this.on('destroy', function(model) {
-            model.evictFromCache();
-            this.cache();
+        this.once('restored', function() {
+            this.on('add', function(model) {
+                model.cache();
+                this.cache();
+            }.bind(this));
         }.bind(this));
 
         this.on('remove', function(model) {
-            model.evictFromCache();
             this.cache();
         }.bind(this));
     };
@@ -93,10 +86,16 @@ module.exports = function(Backbone) {
 
     Backbone.Collection.prototype.restore = function(callback) {
         var collection = this;
+
+        var done = function(err) { 
+            this.trigger('restored');
+            callback(err);
+        }.bind(this);
+
         // load cached IDs, unpack into full models and inject
         // into the backbone collection
         Store.get(this.cacheKey()).then(function(cached) {
-            if (!cached) return callback();
+            if (!cached) return done();
             // remove any obviously invalid elements
             cached = _.compact(cached);
             
@@ -110,8 +109,8 @@ module.exports = function(Backbone) {
                 });
             }, function(err, models){
                 if (models) collection.set(models, {silent: false});
-                callback(err);
+                done(err);
             });
-        }).catch(callback);
+        }).catch(done);
     };
 };
