@@ -58,16 +58,16 @@ module.exports = function(Backbone) {
         this._cache_enabled = true;
         this._cache_options = options;
         
-        // when any model in the collection changes, re-cache it
-        this.on('sync', function() {
+        // when the collection is synchronized with the server, re-cache it
+        // and all its models
+        this.on('sync', function(obj) {
+            // if the collection itself is synced then update all the model
+            // caches with the latest versions
+            if (obj instanceof Backbone.Collection) 
+                this.each(function(m){ m.enableCache(); m.cache(); });
+            // always update the list of model ids that the collection
+            // currently contains
             this.cache();
-        }.bind(this));
-
-        this.once('restored', function() {
-            this.on('add', function(model) {
-                model.cache();
-                this.cache();
-            }.bind(this));
         }.bind(this));
 
         this.on('remove', function(model) {
@@ -87,15 +87,10 @@ module.exports = function(Backbone) {
     Backbone.Collection.prototype.restore = function(callback) {
         var collection = this;
 
-        var done = function(err) { 
-            this.trigger('restored');
-            callback(err);
-        }.bind(this);
-
         // load cached IDs, unpack into full models and inject
         // into the backbone collection
         Store.get(this.cacheKey()).then(function(cached) {
-            if (!cached) return done();
+            if (!cached) return callback();
             // remove any obviously invalid elements
             cached = _.compact(cached);
             
@@ -109,8 +104,8 @@ module.exports = function(Backbone) {
                 });
             }, function(err, models){
                 if (models) collection.set(models, {silent: false});
-                done(err);
+                callback(err);
             });
-        }).catch(done);
+        }).catch(callback);
     };
 };
