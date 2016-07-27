@@ -61,12 +61,12 @@ module.exports = function(Backbone) {
         // tap set method to enable caching on all objects in the collection
         var _set = this.set;
         this.set = function() {
-            var models = _set.apply(this, arguments);
+            var result, models = _set.apply(this, arguments);
             if (!Array.isArray(models)) models = [models];
             models.map(function(model){
                 model.enableCache();
             });
-            return models;
+            return result;
         }
 
         // when the collection is synchronized with the server, re-cache it
