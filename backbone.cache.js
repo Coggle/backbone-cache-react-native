@@ -68,7 +68,7 @@ module.exports = function(Backbone) {
         }.bind(this);
 
         // catch models being removed on sync from collection too
-        this.on('destroy remove', function() {
+        this.on('destroy', function() {
             this.evictFromCache();
         }.bind(this), this);
     };
