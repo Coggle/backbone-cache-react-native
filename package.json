@@ -19,7 +19,7 @@
   "dependencies": {
     "async": "^1.5.2",
     "backbone-models-react-native": "0.0.1",
-    "react-native-simple-store": "^1.0.1",
+    "react-native-simple-store": "Coggle/react-native-simple-store",
     "underscore": "^1.8.3"
   }
 }

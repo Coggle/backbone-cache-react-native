@@ -20,20 +20,62 @@ module.exports = function(Backbone) {
         if (this._cache_enabled) return;
         this._cache_enabled = true;
         this._cache_options = options;
-        // update cached version of the model any time it's synced from 
-        // the server
-        this.on('sync', function() {
-            this.cache();
-        }.bind(this), this);
 
-        this.on('destroy', function() {
+        // update cached version of the model any time it's synced from 
+        // the server, delaying callback until cache write is completed
+        var _fetch = this.fetch;
+        this.fetch = function(options) {
+            if (!options) options = {};
+            var _success = options.success;
+            options.success = function() {
+                var args = arguments;
+                this.cache(function() {
+                    if (_success) _success.apply(this, args);
+                }.bind(this));
+            }.bind(this);
+            return _fetch.call(this, options);
+        }.bind(this);
+        var _save = this.save;
+        this.save = function(key, val, options) {
+            // Handle both `"key", value` and `{key: value}` -style arguments.
+            var attrs;
+            if (key == null || typeof key === 'object') {
+                attrs = key;
+                options = val;
+            } else (attrs = {})[key] = val;
+
+            if (!options) options = {};
+            var _success = options.success;
+            options.success = function() {
+                var args = arguments;
+                this.cache(function() {
+                    if (_success) _success.apply(this, args);
+                }.bind(this));
+            }.bind(this);
+            return _save.call(this, attrs, options);
+        }.bind(this);
+        var _destroy = this.destroy;
+        this.destroy = function(options) {
+            if (!options) options = {};
+            var _success = options.success;
+            options.success = function() {
+                var args = arguments;
+                this.evictFromCache(function() {
+                    if (_success) _success.apply(this, args);
+                }.bind(this));
+            }.bind(this);
+            return _destroy.call(this, options);
+        }.bind(this);
+
+        // catch models being removed on sync from collection too
+        this.on('destroy remove', function() {
             this.evictFromCache();
         }.bind(this), this);
     };
 
     // a method to actually do the cache writing
-    Backbone.Model.prototype.cache = function() {
-        return Store.save(this.cacheKey(), this.toJSON());
+    Backbone.Model.prototype.cache = function(callback) {
+        Store.save(this.cacheKey(), this.toJSON()).then(callback);
     };
 
     Backbone.Model.prototype.evictFromCache = function() {
@@ -58,36 +100,54 @@ module.exports = function(Backbone) {
         this._cache_enabled = true;
         this._cache_options = options;
         
-        // tap set method to enable caching on all objects in the collection
-        var _set = this.set;
-        this.set = function() {
-            var result, models = _set.apply(this, arguments);
-            if (!Array.isArray(models)) models = [models];
-            models.map(function(model){
-                model.enableCache();
-            });
-            return result;
-        }
+        this.models.map(function(model){
+            model.enableCache();
+        });
+        this.on('add', function(model) {
+            model.enableCache();
+        });
 
-        // when the collection is synchronized with the server, re-cache it
-        // and all its models
-        this.on('sync', function(obj) {
-            // if the collection itself is synced then update all the model
-            // caches with the latest versions
-            if (obj instanceof Backbone.Collection) 
-                this.each(function(m){ m.enableCache(); m.cache(); });
-            // always update the list of model ids that the collection
-            // currently contains
-            this.cache();
-        }.bind(this));
+        var _fetch = this.fetch;
+        this.fetch = function(options) {
+            if (!options) options = {};
+            var _success = options.success;
+            options.success = function() {
+                var args = arguments;
+                this.cache(function() {
+                    if (_success) _success.apply(this, args);
+                }.bind(this));
+            }.bind(this);
+            return _fetch.call(this, options);
+        }.bind(this);
+        var _create = this.create;
+        this.create = function(model, options) {
+            if (!options) options = {};
+            var _success = options.success;
+            options.success = function() {
+                var args = arguments;
+                this.cache(function() {
+                    if (_success) _success.apply(this, args);
+                }.bind(this));
+            }.bind(this);
+            return _create.call(this, model, options);
+        }.bind(this);
 
-        this.on('remove', function(model) {
-            this.cache();
-        }.bind(this));
     };
 
-    Backbone.Collection.prototype.cache = function() {
-        return Store.save(this.cacheKey(), this.map(function(m) { return m.id; }));
+    Backbone.Collection.prototype.cache = function(callback) {
+        // generate the list of models to be saved as pairs with the 
+        // key they should be cached under
+        var toCache = this.models.map(function(model){
+            return [ model.cacheKey(), model.toJSON() ];
+        });
+        // and add an entry for the collection which is the list
+        // of cache keys that are currently part of this collection
+        toCache.push([this.cacheKey(), this.models.map(function(model) {
+            return model.cacheKey();
+        })]);
+        Store.save(toCache).then(function() {
+            callback();
+        }.bind(this));
     };
 
     Backbone.Collection.prototype.evictFromCache = function() {
@@ -98,25 +158,20 @@ module.exports = function(Backbone) {
     Backbone.Collection.prototype.restore = function(callback) {
         var collection = this;
 
-        // load cached IDs, unpack into full models and inject
+        // load saved list of model cachKey()'s, unpack into full models and inject
         // into the backbone collection
         Store.get(this.cacheKey()).then(function(cached) {
             if (!cached) return callback();
             // remove any obviously invalid elements
             cached = _.compact(cached);
             
-            async.map(cached, function(id, cb){
-                var doc = {};
-                doc[collection.model.prototype.idAttribute] = id;
-                var model = new (collection.model)(doc);
-                model.collection = collection;
-                model.restore(function() {
-                    cb(false, model);
+            Store.get(cached).then(function(values) {
+                var models = values.map(function(value) {
+                    return new (collection.model)(value);
                 });
-            }, function(err, models){
-                if (models) collection.set(models, {silent: false});
-                callback(err);
+                collection.set(models, {silent: false});
+                callback();
             });
-        }).catch(callback);
+        });
     };
 };
