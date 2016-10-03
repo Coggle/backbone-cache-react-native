@@ -95,7 +95,7 @@ module.exports = function(Backbone) {
         return Store.delete(this.prefixedCacheKey());
     };
 
-    Backbone.Model.prototype.restore = function(callback) {
+    Backbone.Model.prototype.restoreFromCache = function(callback) {
         var model = this;
 
         // load cached object and inject it into the backbone model
@@ -157,7 +157,7 @@ module.exports = function(Backbone) {
         return Store.delete(this.prefixedCacheKey());
     };
 
-    Backbone.Collection.prototype.restore = function(callback) {
+    Backbone.Collection.prototype.restoreFromCache = function(callback) {
         var collection = this;
 
         // load saved list of model cachKey()'s, unpack into full models and inject
@@ -171,7 +171,7 @@ module.exports = function(Backbone) {
                 var models = values.map(function(value) {
                     return new (collection.model)(value);
                 });
-                collection.set(models, {silent: false});
+                collection.set(models, { silent: false });
                 callback();
             });
         });
