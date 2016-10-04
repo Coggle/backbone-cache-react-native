@@ -90,9 +90,9 @@ module.exports = function(Backbone) {
         Store.save(toCache).then(callback);
     };
 
-    Backbone.Model.prototype.evictFromCache = function() {
+    Backbone.Model.prototype.evictFromCache = function(callback) {
         this.off(undefined, undefined, this);
-        return Store.delete(this.prefixedCacheKey());
+        return Store.delete(this.prefixedCacheKey()).then(callback);
     };
 
     Backbone.Model.prototype.restoreFromCache = function(callback) {
