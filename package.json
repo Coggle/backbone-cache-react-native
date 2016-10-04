@@ -1,6 +1,6 @@
 {
   "name": "backbone-cache-react-native",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Caching of models and collections for use offline, using react-native-simple-store",
   "main": "backbone.cache.js",
   "scripts": {
